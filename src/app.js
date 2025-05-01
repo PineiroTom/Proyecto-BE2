@@ -7,6 +7,7 @@ import handlebars from 'express-handlebars';
 import { __dirname } from './utils.js';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
+import initializePassport from './config/passportConfig.js';
 
 mongoose.connect('mongodb://localhost:27017/BDPrueba');
 
@@ -30,6 +31,10 @@ app.use(session({
     resave: false,
     saveUninitialized: false
 }));
+
+initializePassport();
+app.use(passport.initialize());
+app.use(passport.session());
 
 //Configuración del motor de plantillas
 app.engine('handlebars', handlebars.engine());

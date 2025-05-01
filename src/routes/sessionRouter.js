@@ -18,15 +18,21 @@ router.post('/register', async (req, res) => {
             last_name,
             email,
             age,
+            role,
             password: createHash(password)
         })
 
         await newUser.save();
-        res.redirect('/login');
-    }catch (error){
-        console.log(`Error al registrar el usuario: ${error}`);
-        res.status(500).send("Error al registrar el usuario");
-    }
+        res.status(201).send({
+            status: true,
+            message: "Usuario registrado exitosamente",
+        });
+
+        res.redirect("/user/current");
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    
 })
 
 //Iniciar sesión
@@ -47,24 +53,27 @@ router.post('/login', async (req, res) =>{
             return res.status(403).send("Contraseña incorrecta")
         }
 
-        req.session.user = user;
-        res.redirect('/perfil');
-    }catch (error){
-        console.log(`Error al iniciar sesión`);
-        res.status(500).send("Error al iniciar sesión");
-    }
+        const jwt_token = generateToken({
+            userId: user._id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            email: user.email,
+            role: user.role,
+            age: user.age
+        });
+
+        res.cookie("currentUser", jwt_token, { httpOnly: true });
+        res.redirect("/user/current");
+        } catch (error) {
+            console.log(`Error al iniciar sesión ${error}`);
+            res.status(400).send("Error al iniciar sesión");
+        }
 })
 
 //Cerrar sesión del usuario
 router.post('/logout', (req, res) => {
-    req.session.destroy( (error) => {
-        if(error){
-            console.error('Error al cerrar sesión');
-            res.status(500).send('Error al cerrar sesión');
-        } else{
-            res.redirect('/login');
-        }
-    })
+    res.clearCookie("currentUser");
+    res.redirect("/user/login");
 })
 
 //Ruta POST para manejar la restauración de contraseña
