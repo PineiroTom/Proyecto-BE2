@@ -2,11 +2,14 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import sessionRouter from './routes/sessionRouter.js';
 import userRouter from './routes/userRouter.js';
-import mongoose from 'mongoose';
+import productsRouter from './routes/productsRouter.js';
+import cartRouter from './routes/cartRouter.js';
 import handlebars from 'express-handlebars';
 import { __dirname } from './utils.js';
 import session from 'express-session';
+import mongoose from 'mongoose';
 import MongoStore from 'connect-mongo';
+import dotenv from 'dotenv';
 import initializePassport from './config/passportConfig.js';
 
 mongoose.connect('mongodb://localhost:27017/BDPrueba');
@@ -19,6 +22,9 @@ app.use(express.json()); //Formatea los cuerpos json de peticiones entrantes (re
 app.use(express.urlencoded({extended: true})); //Formatea query params de url para peticiones entrantes..
 app.use(express.static('/public' )); // Configura la carpeta donde alojamos los recursos estaticos
 app.use(cookieParser()); // Para trabajar con cookies
+
+dotenv.config();
+const PORT = process.env.PORT;
 
 const mongoURL = '';
 mongoose.connect(mongoURL)
@@ -45,12 +51,14 @@ app.get('/setCookie', (req, res) => {
     res.cookie('nombre', 'Tomas', {maxAge: 10000}).send('Cookie seteada');
 })
 
-app.use('/api/users', userRouter); 
+app.use('/api/users', userRouter);
+app.use('/api/products', productsRouter);
+app.use('/api/carts', cartRouter);
 
 app.get('/', (req,res)=>{
     res.render('index');
 })
 
-app.listen(8080, () => {
-    console.log('Servidor escuchando en el puerto 8080');
+app.listen(PORT, () => {
+    console.log(`Servidor escuchando en el puerto ${PORT}`);
 });

@@ -1,15 +1,20 @@
 import { Router } from 'express';
-import userModel from '../models/userModel.js';
+import UserDAO from '../DAO/userDAO.js';
+import UserRepository from '../dao/userRepository.js';
 import mongoose from 'mongoose';
+
+const userDao = new UserDAO();
+const userRepository = new UserRepository(userDao);
 
 const router = Router();
 
 router.get('/', async (req, res) => {
     try{
-        const result = await userModel.find();
-        res.status(200).json({status: 'success', payload: result})
+        const users = await userRepository.getUser();
+        res.status(200).json({status: 'success', payload: users})
     }
     catch(error){
+        console.log(error);
         res.status(400).json({status: 'error', error: error.message})
     }
 })
@@ -17,9 +22,9 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
     const { first_name, last_name, email, password, age } = req.body
     try{  
-        const result = await userModel.create( { first_name, last_name, email, password, age });
-        res.cookie('id', result._id);
-        res.status(201).json({status: 'success', payload: result})
+        const newUser = await userRepository.createUser({ first_name, last_name, email, password, age });
+        res.cookie('id', newUser._id);
+        res.status(201).json({status: 'success', payload: newUser})
     }
     catch(error){
         console.log(error);
@@ -35,7 +40,7 @@ router.put('/:uid', async (req, res) => {
         if(!mongoose.Types.ObjectId.isValid(uid)){
             throw new Error('ObjectID es inválido');
         }
-        const user = await userModel.findById(uid);
+        const user = await userRepository.getUserById(uid);
         if(!user) throw new Error('User not found');
 
         const newUser = {
@@ -46,10 +51,11 @@ router.put('/:uid', async (req, res) => {
             email: email ?? user.email
         }
 
-        const updateUser = await userModel.updateOne({_id: uid}, newUser);
-        res.send({status: 'success', payload: updateUser})
+        const updatedUser = await userRepository.updateUser(uid, newUser);
+        res.send({status: 'success', payload: updatedUser})
 
-    }catch(error){
+    } catch(error){
+        console.log(error);
         res.status(400).send({status: 'error',message: error.message})
     }
 
@@ -59,17 +65,44 @@ router.put('/:uid', async (req, res) => {
 router.delete('/:uid', async (req, res) => {
     const uid  = req.params.uid;
     try{
-        const userDeleted = await userModel.deleteOne({_id : uid});
-        res.send({status: 'success', payload: userDeleted})
+        await userRepository.deleteUser(uid);
+        res.send({status: 'success', payload: { message: 'User deleted' } })
 
-    }catch(error){
+    } catch(error){
+        console.log(error);
         res.status(400).send({status: 'error',message: error.message})
     }
 })
 
+router.get('/current', async (req, res) => {
+    try {
+        if (!req.cookies.id) {
+            return res.status(401).json({ status: 'error', error: 'No user logged in' });
+        }
+        const userId = req.cookies.id;
+        const user = await userRepository.getUserById(userId);
+
+        if (!user) {
+            return res.status(404).json({ status: 'error', error: 'User not found' });
+        }
+
+        const userDTO = {
+            first_name: user.first_name,
+            last_name: user.last_name,
+            email: user.email,
+            age: user.age
+        };
+
+        res.status(200).json({ status: 'success', payload: userDTO });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
 //Ejemplo de como vaciar una cookie o eliminarla
 router.get('/logout' ,(req,res) => {
-    res.clearCookie('username'); 
+    res.clearCookie('username');
     res.status(200).json({status: 'success', payload: "Sesión cerrada"})
 })
 
